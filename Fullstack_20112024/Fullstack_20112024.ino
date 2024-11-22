@@ -1,3 +1,5 @@
+#include <Controllino.h>
+
 long gating = 450;
 int valveNumber=0;
 int repetitions=1;
@@ -19,7 +21,6 @@ const int onOffPin = 77; // On/Off-Pin ( On if High )
 
 
 const int valve[3] = {4, 5, 6};  //{PD4, PD5, PD6}; // DOD A,B,C UV C(PD6)
-//const int valve[4] = {4, 5, 6, 7}; was originally this
 const int pneumExtr[2] = {A4, A5}; //Pneum. valve A,B
 
 const int button_in[4] = {A0, A1, A2, A3}; //Digital Read Pins to check if button of potentially mounted DropGun was pressed
@@ -105,13 +106,10 @@ void makeDrop() {
     if (valveNumber==1)
       digitalWrite(pneumExtr[valveNumber], HIGH); //Pneum B
 
-    if (valveNumber==2) 
-      digitalWrite(valve[valveNumber], HIGH); //UV
-    
-    //delay(200);
-    //digitalWrite(valve[valveNumber], LOW);
-    //digitalWrite(LED_BUILTIN, LOW);
-    }
+    if (valveNumber==2){
+      turnOnUV();
+    } 
+  }
 
     if (gating==0){
     digitalWrite(LED_BUILTIN, LOW);
@@ -121,7 +119,6 @@ void makeDrop() {
           for (int i = 0; i < 2; i++) {
           digitalWrite(pneumExtr[valveNumber], LOW);
           }
-          
     }
     
     if (gating<=16000){
@@ -213,7 +210,7 @@ void newPneumaticSettings() {
   digitalWrite(9, HIGH); //Digital 5
   }
 
-    delay(3000);    //We could reduce this delay in future
+    delay(2000);    //We could reduce this delay in future
 
     Serial.print("N:");
     Serial.print(pneumaticNumber);

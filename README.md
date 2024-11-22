@@ -1,4 +1,5 @@
 # Fullstack Arduino Project
+# Uploaded 22.11.24 on minho printer and everything works, Zhubs connected to DC-DC converter instead of Controlino Relay
 
 ## Description
 
