@@ -43,4 +43,10 @@ The components are connected to the Controlino Mini as follows:
 
 ---
 
-This format organizes the information more effectively and makes the pin configuration easier to read.
+# Temperature Controlino firmware
+
+Pins for Temperature reading changed
+1. A: 12 (PB4)(MISO)
+2. B: 11 (PB3)(MOSI)
+3. C: 10 (/SS)
+check pinout pdf
