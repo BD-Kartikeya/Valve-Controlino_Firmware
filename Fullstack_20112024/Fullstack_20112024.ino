@@ -304,6 +304,6 @@ void checkSerial() {
 void loop() {
  
   checkSerial();
-  readInpuPort();
+  //readInpuPort(); commented out to disable buttons on the printers //26.11.2024, refer to roboabstractionlayer, search "XA" for button functionality
   
 }
