@@ -1,6 +1,4 @@
-//Firmware flashed to minho printer 05.12.24
-//peltier coolind is set to LOW LOW instead of HIGH HIGH for safety, will be updated in future
-//upper limnit of 61° added 
+//experimental branch to make cooling peltier function safe
 
 #include <OneWire.h>
 
@@ -12,12 +10,11 @@ byte deviceCounter = 0;  // Going through devices on each port
 // TemperatureSensorPorts
 const byte portMaxNumber = 4;  // Maxmimum number of ports
 
-OneWire ds(12);   //changed from A4 to 12(PB4)(MISO)
-OneWire ds2(11);  //changed from A5 to 11 (PB3)(MOSI)
-OneWire ds3(10);  //changed from 99 to 10(/SS)
-OneWire ds4(88);  //not in use
+OneWire ds(12);   // changed from A4 to 12(PB4)(MISO)
+OneWire ds2(11);  // changed from A5 to 11 (PB3)(MOSI)
+OneWire ds3(10);  // changed from 99 to 10(/SS)
+OneWire ds4(88);  // not in use
 OneWire ALLDS[portMaxNumber] = { ds, ds2, ds3, ds4 };
-
 
 double curTempBuffer[portMaxNumber][4];  // Current Temperature
 double curTemp[portMaxNumber];           // Current Temperature
@@ -36,22 +33,24 @@ int tt = 0;
 int j = 0;
 int ii = 0;
 
-int roomTemp = 40;  //Achtung wird und noch 5 addiert, auf 45 °C
-//int status_A =0; //0 = NOTACTIVE, 1 = ACTIVE, 2 = HEAT, 3 = STOP, 4 = COOL
-//int status_B =0; //0 = NOTACTIVE, 1 = ACTIVE, 2 = HEAT, 3 = STOP, 4 = COOL
+int coolingLastTemp[4] = { 100, 100, 100, 100 };  // variable to save the last temp when cooling peltier is activated @KC
+boolean isCooling = false;
+boolean shouldCool = true;
+
+int roomTemp = 40;  // Achtung wird und noch 5 addiert, auf 45 °C
+// int status_A =0; //0 = NOTACTIVE, 1 = ACTIVE, 2 = HEAT, 3 = STOP, 4 = COOL
+// int status_B =0; //0 = NOTACTIVE, 1 = ACTIVE, 2 = HEAT, 3 = STOP, 4 = COOL
 
 int statusPeltier[4] = { 0, 0, 0, 0 };
 int peltier[4][2] = { { 4, 8 }, { 5, 9 }, { 6, A4 }, { 7, A5 } };
 
-
-
 // Pins
 const int ledPin = 13;    // Led Pin
 const int onOffPin = 77;  // On/Off-Pin ( On if High )
-//const int peltier_A[2]={4, 8};
-//const int peltier_B[2]={5, 9};
-//const int peltier_C[2]={6, A4};
-//const int peltier_D[2]={7, A5};
+// const int peltier_A[2]={4, 8};
+// const int peltier_B[2]={5, 9};
+// const int peltier_C[2]={6, A4};
+// const int peltier_D[2]={7, A5};
 boolean activedPeltier[portMaxNumber] = { false, false, false, false };
 boolean anyDevice[portMaxNumber] = { false, false, false, false };  // If there are any devices on one port
 const double threshold = 0.5;
@@ -75,7 +74,8 @@ void setup() {
   Serial.print(portMaxNumber);
   Serial.println(";");
   for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < portMaxNumber; j++) curTempBuffer[j][i] = 25;
+    for (int j = 0; j < portMaxNumber; j++)
+      curTempBuffer[j][i] = 25;
   }
   for (int i = 0; i < 4; i++) {
     refTemp[i] = 36;              // As Starting refTemp
@@ -83,7 +83,6 @@ void setup() {
   }
   getTemp();
 }
-
 
 void stopPeltiers() {
   for (int j = 0; j < 4; j++) {
@@ -148,7 +147,7 @@ void deactivatePeltier(int printhead) {
 }
 
 void heatPeltier(int printhead) {
-  Serial.print("INCR:");  //INCREASE wird nicht erkannt, evtl wegen der Reihung CRE
+  Serial.print("INCR:");  // INCREASE wird nicht erkannt, evtl wegen der Reihung CRE
   Serial.print(printhead);
   Serial.print(":");
   Serial.print(refTemp[printhead]);
@@ -181,8 +180,8 @@ void stopPeltier(int printhead) {
 }
 
 void coolPeltier(int printhead) {
-  digitalWrite(peltier[printhead][0], LOW);
-  digitalWrite(peltier[printhead][1], LOW);
+  digitalWrite(peltier[printhead][0], HIGH);  // switched from HIGH to LOW
+  digitalWrite(peltier[printhead][1], HIGH);  // switched from HIGH to LOW
   Serial.print("DECR:");
   Serial.print(printhead);
   Serial.print(":");
@@ -190,9 +189,6 @@ void coolPeltier(int printhead) {
   Serial.println(";");
   statusPeltier[printhead] = 4;
 }
-
-
-
 
 void readTemp() {
   if (Serial.available() > 0) {
@@ -212,7 +208,8 @@ void readTemp() {
 void setTemp() {
   // Set Temp
   //     Serial.println("Case S");
-  if (Check < 4) goto errorTemp;
+  if (Check < 4)
+    goto errorTemp;
   {
     if (Serial.available() > 0) {
       // Save new Informations
@@ -272,7 +269,6 @@ errorTemp:;
   }
 }
 
-
 void activatePeltiers() {
   if ((inByte[1] >= 0) && (inByte[1] <= 3)) {
     activedPeltier[inByte[1]] = true;
@@ -306,10 +302,10 @@ void checkSerial() {
     Check = Serial.readBytesUntil('\n', inByte, 4);
 
     if (Check > 1 && inByte[0] == 'P') {
-      //stopPeltier();
-      //makeDrops();
+      // stopPeltier();
+      // makeDrops();
     } else if (Check > 1) {  // 1 byte is not enough information
-      //stopPeltier();
+      // stopPeltier();
       switch (inByte[0]) {
 
         // Read Temp
@@ -331,19 +327,19 @@ void checkSerial() {
         case 'F':
           {
             deactivatePeltiers();
-            //Serial.println("Test");
+            // Serial.println("Test");
             break;
           }
 
-        //New Printing Settings
+        // New Printing Settings
         case 'N':
           {
-            //newPrintingSettings();
+            // newPrintingSettings();
             break;
           }
 
-        //Printing Command
-        case 'P':  //printingCommand();
+        // Printing Command
+        case 'P':  // printingCommand();
           break;
       }
     }
@@ -374,11 +370,12 @@ next:;
       for (int j = 0; j < deviceCounter; j++) {
         curTemp[portCounter] += curTempBuffer[portCounter][j];
       }
-      if (!(deviceCounter == 0)) curTemp[portCounter] /= deviceCounter;
+      if (!(deviceCounter == 0))
+        curTemp[portCounter] /= deviceCounter;
       deviceCounter = 0;
       ALLDS[portCounter].reset_search();
       portCounter++;
-      //delay(100);
+      // delay(100);
       for (i = 0; i < 10; i++) {
         checkSerial();
         delay(10);
@@ -393,19 +390,19 @@ next:;
     // Reading out the Sensors
     switch (addr[0]) {
       case 0x10:
-        //Serial.println("  Chip = DS18S20");  // or old DS1820
+        // Serial.println("  Chip = DS18S20");  // or old DS1820
         type_s = 1;
         break;
       case 0x28:
-        //Serial.println("  Chip = DS18B20");
+        // Serial.println("  Chip = DS18B20");
         type_s = 0;
         break;
       case 0x22:
-        //Serial.println("  Chip = DS1822");
+        // Serial.println("  Chip = DS1822");
         type_s = 0;
         break;
       default:
-        //Serial.println("ERROR:DEVICE;");
+        // Serial.println("ERROR:DEVICE;");
         continue;
     }
     digitalWrite(ledPin, HIGH);
@@ -416,7 +413,7 @@ next:;
     for (i = 0; i < 100; i++) {
       checkSerial();
       delay(10);
-    }  //AB ergänzt und entfernt 26.3.2018
+    }  // AB ergänzt und entfernt 26.3.2018
     present = ALLDS[portCounter].reset();
     ALLDS[portCounter].select(addr);
     ALLDS[portCounter].write(0xBE);
@@ -432,9 +429,12 @@ next:;
     } else {  // just in case someday some1 wants other DS18XXXX sensors to be used
       byte cfg = (data[4] & 0x60);
       // at lower res, the low bits are undefined, so let's zero them
-      if (cfg == 0x00) raw = raw & ~7;       // 9 bit resolution, 93.75 ms
-      else if (cfg == 0x20) raw = raw & ~3;  // 10 bit res, 187.5 ms
-      else if (cfg == 0x40) raw = raw & ~1;  // 11 bit res, 375 ms
+      if (cfg == 0x00)
+        raw = raw & ~7;  // 9 bit resolution, 93.75 ms
+      else if (cfg == 0x20)
+        raw = raw & ~3;  // 10 bit res, 187.5 ms
+      else if (cfg == 0x40)
+        raw = raw & ~1;  // 11 bit res, 375 ms
       // default is 12 bit resolution, 750 ms conversion time
     }
     celsius = (float)raw / 16.0;
@@ -445,12 +445,14 @@ next:;
 
   // Compare to Set Temp
   for (j = 0; j < 4; j++) {
-    //if (tt>=4) tt=0;
-    //i=tt;
-    //stopPeltier();
+    // if (tt>=4) tt=0;
+    // i=tt;
+    // stopPeltier();
     if (activedPeltier[j]) {
 
-      if (curTemp[j] > 61) {  //hard limit to stop heating
+
+      //hardcoded safety, if peltier higher than 60°C then stop them
+      if (curTemp[j] > 61) {
         stopPeltier(j);
       }
 
@@ -484,48 +486,82 @@ next:;
       }
 
       double diff = curTemp[j] - refTemp[j];
-      if (diff < -threshold && curTemp[j] < 61) {
-        if (j == 0 && statusPeltier[j] != 2) heatPeltier(j);
-        if (j == 1 && statusPeltier[j] != 2) heatPeltier(j);
-        if (j == 2 && statusPeltier[j] != 2) heatPeltier(j);
-        if (j == 3 && statusPeltier[j] != 2) heatPeltier(j);
-      } else if (diff > threshold) {  //Temperatur liegt oberhalb Soll-Temperatur
-        //Heizung wird gestoppt
+      //heating block
+      if (diff < -threshold && curTemp[j] < 61) { //hard upper limit of 60°C, checks if difference is +ve
+        if (statusPeltier[j] != 2) {
+          heatPeltier(j);
+        }  
+        isCooling = false;  //
+      } 
+      
+      
+      else if (diff > threshold) {  // Temperatur liegt oberhalb Soll-Temperatur
+        // Heizung wird gestoppt
         if (refTemp[j] >= roomTemp) {
-          if (j == 0 && statusPeltier[j] != 3) stopPeltier(j);
-          if (j == 1 && statusPeltier[j] != 3) stopPeltier(j);
-          if (j == 2 && statusPeltier[j] != 3) stopPeltier(j);
-          if (j == 3 && statusPeltier[j] != 3) stopPeltier(j);
-        }
-        //Sicherstellen, dass Kühlfunktion nicht überstrapaziert wird
-        if (refTemp[j] < roomTemp && curTemp[j] < roomTemp + 5) {  //make sure current temp is less than 55
-          if (j == 0 && statusPeltier[j] != 4) coolPeltier(j);
-          if (j == 1 && statusPeltier[j] != 4) coolPeltier(j);
-          if (j == 2 && statusPeltier[j] != 4) coolPeltier(j);
-          if (j == 3 && statusPeltier[j] != 4) coolPeltier(j);
+          if (j == 0 && statusPeltier[j] != 3)
+            stopPeltier(j);
+          if (j == 1 && statusPeltier[j] != 3)
+            stopPeltier(j);
+          if (j == 2 && statusPeltier[j] != 3)
+            stopPeltier(j);
+          if (j == 3 && statusPeltier[j] != 3)
+            stopPeltier(j);
         }
 
+        // Sicherstellen, dass Kühlfunktion nicht überstrapaziert wird
+        if (refTemp[j] < roomTemp && curTemp[j] < roomTemp + 5 && (curTemp[j] <= coolingLastTemp[j]) && shouldCool == true) {
+          if (j == 0 && statusPeltier[j] != 4)
+            coolPeltier(j);
+          if (j == 1 && statusPeltier[j] != 4)
+            coolPeltier(j);
+          if (j == 2 && statusPeltier[j] != 4)
+            coolPeltier(j);
+          if (j == 3 && statusPeltier[j] != 4)
+            coolPeltier(j);
+
+          coolingLastTemp[j] = curTemp[j];
+          isCooling = true;
+        }
+
+        if(isCooling == true && curTemp[j] > coolingLastTemp[j]){
+          shouldCool = false;
+          stopPeltier(j);
+        }
+
+        if(shouldCool== false && refTemp[j]>= curTemp[j]){
+          shouldCool = true;
+        }
+
+
       } else if (diff < threshold && diff > -threshold) {
-        Serial.print("NOC:");  //NOCHANGE
+        Serial.print("NOC:");  // NOCHANGE
         Serial.print(j);
         Serial.println(";");
-        if (j == 0 && statusPeltier[j] != 3) stopPeltier(j);
-        if (j == 1 && statusPeltier[j] != 3) stopPeltier(j);
-        if (j == 2 && statusPeltier[j] != 3) stopPeltier(j);
-        if (j == 3 && statusPeltier[j] != 3) stopPeltier(j);
+        if (j == 0 && statusPeltier[j] != 3)
+          stopPeltier(j);
+        if (j == 1 && statusPeltier[j] != 3)
+          stopPeltier(j);
+        if (j == 2 && statusPeltier[j] != 3)
+          stopPeltier(j);
+        if (j == 3 && statusPeltier[j] != 3)
+          stopPeltier(j);
       } else {
         stopPeltier(j);
       }
     }
 
     if (!activedPeltier[j]) {
-      Serial.print("NOC:");  //NOCHANGE
+      Serial.print("NOC:");  // NOCHANGE
       Serial.print(j);
       Serial.println(";");
-      if (j == 0 && statusPeltier[j] != 0) deactivatePeltier(j);
-      if (j == 1 && statusPeltier[j] != 0) deactivatePeltier(j);
-      if (j == 2 && statusPeltier[j] != 0) deactivatePeltier(j);
-      if (j == 3 && statusPeltier[j] != 0) deactivatePeltier(j);
+      if (j == 0 && statusPeltier[j] != 0)
+        deactivatePeltier(j);
+      if (j == 1 && statusPeltier[j] != 0)
+        deactivatePeltier(j);
+      if (j == 2 && statusPeltier[j] != 0)
+        deactivatePeltier(j);
+      if (j == 3 && statusPeltier[j] != 0)
+        deactivatePeltier(j);
     }
     giveStatus(j);
     giveCurTemp(j);
