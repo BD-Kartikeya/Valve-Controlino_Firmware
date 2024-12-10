@@ -15,7 +15,7 @@ The "Fullstack" Arduino project is designed for a full-stack Regenerate printer,
 - **ZHub:**
   - A, B, C
 
-### Pin Configuration
+# Valve Controlino
 
 The components are connected to the Controlino Mini as follows:
 
@@ -30,23 +30,22 @@ The components are connected to the Controlino Mini as follows:
 | Pneumatic Valve A    | D6   |     A4      |  
 | Pneumatic Valve B    | D7   |     A5      |  
 
-**Note:** Refer to the Controlino Mini pinout documentation for the exact pin locations.
+**Note:** Refer to the Controlino Mini pinout documentation for the exact pin locations and make sure you have the Controlino library installed in Arduino IDE and choose controlino mini @
+https://www.controllino.com/board-library-setup-in-arduino-ide/?srsltid=AfmBOoos7H7Gvr0hwL9I-0P8VIP5qRC5WvGeUovFKAbZsvlEV49jvcsT
 
 ---
 
-## Installation
+# Temperature Controlino
 
-1. Install the Arduino IDE from [arduino.cc](https://www.arduino.cc/).  
-2. Open the provided `.ino` file in the Arduino IDE.  
-3. Connect your Arduino board (Controlino Mini) to the computer via USB.  
-4. Verify and upload the sketch to the board.  
-
----
-
-# Temperature Controlino firmware
+Controls/monitors the temperature readings of the printerheads using ds1820 sensors using onewire library(make sure to unstall it in Arduino IDE)
+Also sends signals to relays for Peltier heating/cooling 
 
 Pins for Temperature reading changed
 1. A: 12 (PB4)(MISO)
 2. B: 11 (PB3)(MOSI)
 3. C: 10 (/SS)
 check pinout pdf
+
+
+
+
